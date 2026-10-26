@@ -40,4 +40,9 @@ ENV/
 .env.*
 !.env.example
 
+# 忽略 PyTorch 缓存和数据文件
+*.pt
+*.tar.gz
+*.wav
+
 
