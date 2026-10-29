@@ -7,6 +7,12 @@
 
 注意：导出前模型必须处于 eval 模式（下面 model.eval() 之后有断言），
 否则 BatchNorm 会用单个样本的统计量，模型导出后基本“不看内容”。
+
+opset 默认 18：新版 torch 的 dynamo 导出器用 12 会报错；Jetson 侧 TensorRT 10.16
+解析 opset 18 已验证可用（旧 engine 就是从 opset 18 的 onnx 编出来的）。
+
+导出的 onnx 字节数只由计算图结构决定、与权重数值无关，所以重训前后大小一致是正常的，
+不能用文件大小判断是不是新模型 —— 用 mtime 或实测概率判断。
 """
 
 import argparse
@@ -26,7 +32,9 @@ def main():
     ap = argparse.ArgumentParser(description="导出 KWS 唤醒词模型为 ONNX")
     ap.add_argument("--pth", default=os.path.join(CKPT_DIR, "best_wakeword.pth"))
     ap.add_argument("--out", default=os.path.join(CKPT_DIR, "wakeword.onnx"))
-    ap.add_argument("--opset", type=int, default=12)
+    ap.add_argument("--opset", type=int, default=18,
+                    help="ONNX opset，默认 18：新版 torch 的 dynamo 导出器对 12 会报错，"
+                         "且 Jetson 上 TensorRT 10.16 已验证能直接编 opset 18")
     args = ap.parse_args()
 
     if not os.path.exists(args.pth):

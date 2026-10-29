@@ -10,11 +10,10 @@
 - [ ] 04 Anomaly：时序异常检测
 
 ## 目录说明
-- `common/`：跨项目复用的基础模块（音频/视觉/训练/部署）
-- `projects/NN_xxx/`：每个练手项目的独立代码目录
-- `checkpoints/NN_xxx/`：存放训练生成的模型权重（`.pth`）与特征缓存（`.pt`）
-- `notebooks/`：探索性实验与可视化
-- `docs/`：每个项目的流程记录与踩坑指南
+- `common/`：跨项目复用的基础模块（目前只有 `audio/`：Mel 特征口径、numpy 实现、一致性自检）
+- `projects/NN_xxx/`：每个练手项目的独立代码目录（含 `deploy/` 下的设备端工具）
+- `checkpoints/NN_xxx/`：存放训练生成的权重（`.pth`）、ONNX（`.onnx`）与特征缓存（`.pt`）
+- `notebooks/`、`docs/`：探索性实验与流程记录（按需创建）
 
 ## 快速开始 (以 01-KWS 为例)
 请进入 `projects/kws/` 查看详细说明。

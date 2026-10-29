@@ -19,14 +19,13 @@ import threading
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
-import tensorrt as trt
-from cuda.bindings import runtime as cudart
 
-# 特征实现与仓库共用一份（部署时和本文件放同目录）
+# 特征实现与引擎封装都与仓库共用一份（部署时和本文件放同目录）
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from feature_numpy import (  # noqa: E402
     SAMPLE_RATE, N_MELS, TOP_DB, FEATURE_FLOOR, logmel_feat, frames_per_clip,
 )
+from trt_engine import TRTEngine  # noqa: E402
 
 # ================= 配置参数 =================
 ENGINE_PATH = "wakeword.engine"
@@ -49,72 +48,6 @@ def find_respeaker():
         if d["max_input_channels"] > 0 and DEVICE_NAME_HINT.lower() in d["name"].lower():
             return i
     return None
-
-
-# ================= TensorRT 引擎封装（cuda-python 版） =================
-class TRTEngine:
-    def __init__(self, engine_path):
-        self.logger = trt.Logger(trt.Logger.WARNING)
-        with open(engine_path, "rb") as f, trt.Runtime(self.logger) as runtime:
-            self.engine = runtime.deserialize_cuda_engine(f.read())
-
-        self.context = self.engine.create_execution_context()
-
-        # 分配显存
-        self.inputs, self.outputs, self.bindings = [], [], []
-        for i in range(self.engine.num_io_tensors):
-            name = self.engine.get_tensor_name(i)
-            size = trt.volume(self.engine.get_tensor_shape(name))
-            dtype = trt.nptype(self.engine.get_tensor_dtype(name))
-
-            host_mem = np.empty(size, dtype=dtype)
-            # cudaMalloc 返回 (err, ptr)
-            err, device_mem = cudart.cudaMalloc(host_mem.nbytes)
-            assert err == cudart.cudaError_t.cudaSuccess
-
-            self.bindings.append(int(device_mem))
-            if self.engine.get_tensor_mode(name) == trt.TensorIOMode.INPUT:
-                self.inputs.append({'host': host_mem, 'device': device_mem, 'name': name})
-            else:
-                self.outputs.append({'host': host_mem, 'device': device_mem, 'name': name})
-
-        # 创建 stream
-        err, self.stream = cudart.cudaStreamCreate()
-        assert err == cudart.cudaError_t.cudaSuccess
-
-    def infer(self, input_data):
-        # 1. 数据拷入 Host 内存
-        np.copyto(self.inputs[0]['host'], input_data.ravel())
-
-        # 2. Host -> Device
-        err, = cudart.cudaMemcpyAsync(
-            self.inputs[0]['device'], self.inputs[0]['host'].ctypes.data,
-            self.inputs[0]['host'].nbytes,
-            cudart.cudaMemcpyKind.cudaMemcpyHostToDevice, self.stream
-        )
-        assert err == cudart.cudaError_t.cudaSuccess
-
-        # 3. 设置 tensor 地址并执行推理
-        for inp in self.inputs:
-            self.context.set_tensor_address(inp['name'], inp['device'])
-        for out in self.outputs:
-            self.context.set_tensor_address(out['name'], out['device'])
-
-        self.context.execute_async_v3(stream_handle=self.stream)
-
-        # 4. Device -> Host
-        err, = cudart.cudaMemcpyAsync(
-            self.outputs[0]['host'].ctypes.data, self.outputs[0]['device'],
-            self.outputs[0]['host'].nbytes,
-            cudart.cudaMemcpyKind.cudaMemcpyDeviceToHost, self.stream
-        )
-        assert err == cudart.cudaError_t.cudaSuccess
-
-        # 5. 同步
-        err, = cudart.cudaStreamSynchronize(self.stream)
-        assert err == cudart.cudaError_t.cudaSuccess
-
-        return self.outputs[0]['host'].copy()
 
 
 # ================= 主程序 =================

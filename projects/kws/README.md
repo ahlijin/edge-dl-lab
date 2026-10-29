@@ -40,6 +40,7 @@ edge-dl-lab/
 │   └── check_parity.py        # 自检：numpy 版 == torchaudio 版
 ├── checkpoints/kws/           # 自动生成，用于存放 .pt 缓存、.pth 权重、.onnx
 └── projects/kws/              # 训练相关代码
+    └── deploy/                # 设备端工具：trt_engine.py（引擎封装）+ host_kws_test.py（唤醒回归）
 ```
 
 ## 全流程
@@ -62,6 +63,10 @@ python checkpoints/kws/export_onnx.py
 
 # 4) 拷到 Jetson，编 TensorRT engine 后跑 host_kws_test.py 回归
 #    trtexec --onnx=wakeword.onnx --saveEngine=wakeword.engine --fp16
+
+# 5) 设备端唤醒回归工具 host_kws_test.py（只打唤醒概率，不做命令识别）
+#    部署：scp common/audio/feature_numpy.py projects/kws/deploy/{trt_engine,host_kws_test}.py nvidia@<jetson>:~/hijetson/
+#    运行：.venv/bin/python host_kws_test.py
 ```
 
 ## 评估要求
