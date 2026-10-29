@@ -14,9 +14,6 @@ class AudioFeatureExtractor:
             power=2.0,
         )
         self.to_db=torchaudio.transforms.AmplitudeToDB(top_db=80)
-        # 归一化统计量，训练后填入，这里先用占位值
-        self.mean = 0.0
-        self.std = 1.0
 
     def __call__(self, waveform: torch.Tensor) -> torch.Tensor:
         """"
@@ -27,5 +24,6 @@ class AudioFeatureExtractor:
             waveform = waveform.unsqueeze(0)    # (1, num_samples)
         mel = self.mel(waveform)                # (batch, n_mels, T)
         log_mel = self.to_db(mel)               # (batch, n_mels, T)
-        log_mel = (log_mel - self.mean) / (self.std + 1e-6)
+        max_val = torch.amax(log_mel, dim=(-2, -1), keepdim=True)
+        log_mel = log_mel - max_val
         return log_mel.squeeze(0)               # (n_mels, T)
