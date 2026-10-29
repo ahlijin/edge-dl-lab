@@ -14,7 +14,35 @@ import numpy as np
 
 from projects.kws.model import DSCNN
 
-def main():
+# 特征口径的来源文件：它们任一比缓存新，就说明缓存是旧口径的，训练前必须重跑缓存
+FEATURE_SOURCES = [
+    os.path.join("common", "audio", "feature_numpy.py"),
+    os.path.join("common", "audio", "feature_extractor.py"),
+]
+CACHE_NAMES = ("train_cache.pt", "val_cache.pt", "test_cache.pt")
+
+
+def check_cache_freshness(ckpt_dir, allow_stale=False):
+    """拦住「特征改了但缓存没重跑」——上一版模型踩过的坑。"""
+    newest_src, newest_name = 0.0, ""
+    for rel in FEATURE_SOURCES:
+        path = os.path.join(ROOT_DIR, rel)
+        if os.path.exists(path) and os.path.getmtime(path) > newest_src:
+            newest_src, newest_name = os.path.getmtime(path), rel
+
+    for name in CACHE_NAMES:
+        path = os.path.join(ckpt_dir, name)
+        if not os.path.exists(path):
+            raise SystemExit(f"缺少缓存 {path}\n先跑: python projects/kws/cache_features.py --json-dir ... --audio-dir ...")
+        if os.path.getmtime(path) < newest_src and not allow_stale:
+            raise SystemExit(
+                f"{name} 比 {newest_name} 旧 —— 特征口径改过，但缓存还是旧口径的。\n"
+                f"先重跑 cache_features.py 重建三份缓存；确认口径没变再加 --allow-stale-cache。"
+            )
+    print("缓存新鲜度检查通过：三份缓存都比特征代码新")
+
+
+def main(allow_stale=False):
     device = torch.device("cpu")
     print(f"当前使用设备: {device} (纯 CPU 优化模式)")
     torch.set_num_threads(20) 
@@ -22,6 +50,7 @@ def main():
     CKPT_DIR = os.path.join(ROOT_DIR, "checkpoints", "kws")
 
     print("加载特征缓存中...")
+    check_cache_freshness(CKPT_DIR, allow_stale=allow_stale)
     train_data = torch.load(os.path.join(CKPT_DIR, "train_cache.pt"))
     val_data = torch.load(os.path.join(CKPT_DIR, "val_cache.pt"))
     test_data = torch.load(os.path.join(CKPT_DIR, "test_cache.pt"))
@@ -70,7 +99,7 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     
-    EPOCHS = 3 # 从 10 改为 3，Loss 早就降下去了，多跑无益
+    EPOCHS = 10  # 特征改成电平归一 + 后续还要加域内数据，3 轮不够；仍以 val_loss 变好才存 best 兜底
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 
     best_val_loss = float("inf")
@@ -135,7 +164,7 @@ def main():
     # 5. 最终测试与阈值评估
     # ==========================================
     print("\n开始在测试集上评估...")
-    model.load_state_dict(torch.load("best_wakeword.pth"))
+    model.load_state_dict(torch.load(os.path.join(CKPT_DIR, "best_wakeword.pth"), map_location=device))
     model.eval()
 
     all_probs = []
@@ -154,7 +183,7 @@ def main():
     all_labels = np.array(all_labels)
 
     print("\n--- 不同阈值下的评估结果 ---")
-    for threshold in [0.5, 0.7, 0.9]:
+    for threshold in [0.5, 0.6, 0.7, 0.9]:
         preds = (all_probs > threshold).astype(int)
         tp = np.sum((preds == 1) & (all_labels == 1))
         fp = np.sum((preds == 1) & (all_labels == 0))
@@ -166,4 +195,9 @@ def main():
         print(f"阈值 {threshold}: 召回率 (Recall) = {recall:.4f}, 误唤醒率 (FAR) = {far:.4f}")
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    ap = argparse.ArgumentParser(description="训练 KWS 唤醒词模型（读取 checkpoints/kws/*_cache.pt）")
+    ap.add_argument("--allow-stale-cache", action="store_true",
+                    help="允许缓存比特征代码旧（特征口径没变时才用）")
+    main(allow_stale=ap.parse_args().allow_stale_cache)

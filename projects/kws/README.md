@@ -9,16 +9,67 @@
 - **输入特征**：`1 x 64 x 101` (1 秒音频提取的 Mel 频谱图)
 - **输出类别**：2 (0 = 非唤醒词 / 负样本, 1 = 唤醒词 / 正样本)
 
+## 输入特征口径（改口径必须重跑缓存）
+
+训练、离线评估、设备推理必须是同一套口径，唯一来源是 `common/audio/feature_numpy.py`：
+
+1. `MelSpectrogram(sample_rate=16000, n_fft=400, win_length=400, hop_length=160,
+   n_mels=64, power=2.0)` —— **htk** mel、**不做面积归一**(`norm=None`)、reflect 填充、periodic hann 窗
+2. 转 dB：`10 * log10(max(mel, 1e-10))`（绝对 dB）
+3. **逐样本减去本样本的最大值** —— 让最大值恒为 0，彻底去掉对响度 / 麦克风增益 / AGC / 说话距离的依赖
+4. 减完再截下限 `-80 dB`（等价 `top_db=80`）
+
+所以特征值域是 `[-80, 0]`，**不含绝对响度信息**。
+推论：设备端的 `GAIN` 常数、AGC 开/关都不再影响特征（任何常数增益都被第 3 步整体抵消）；
+短片段补帧要填 `-80`（填 0 等于给时间轴补"最强能量"帧）。
+
+⚠️ 只要上面任一条变了，`checkpoints/kws/` 下三份缓存 `train/val/test_cache.pt` 全部作废，
+必须重跑 `cache_features.py`（`train_wakeword.py` 开头有缓存新鲜度检查，会拦住"改了特征忘了重建缓存"）。
+
 ## 数据集与依赖
 - 数据集：[MobvoiHotwords](https://openslr.org/87/) (SLR87)
-- 依赖库：`torch`, `soundfile`, `tqdm`, `numpy`
+- 依赖库：`torch`, `torchaudio`, `soundfile`, `tqdm`, `numpy`
 *(注：音频读取使用 `soundfile`，彻底绕过 Windows 下 `torchaudio` 依赖 `ffmpeg` 的报错)*
 
 ## 目录结构约定
-在使用脚本前，确保目录结构如下：
 ```text
 edge-dl-lab/
-├── mobvoi_json/               # 数据集 json 标注文件目录
-├── mobvoi_hotword_dataset/    # 数据集 wav 音频解压目录
-├── checkpoints/kws/           # 自动生成，用于存放 .pt 缓存和 .pth 权重
-└── projects/kws/              # 本目录，存放训练代码
+├── common/audio/
+│   ├── feature_numpy.py       # 特征口径唯一来源（设备端直接 import 这份）
+│   ├── feature_extractor.py   # torchaudio 版，参数从 feature_numpy.py 取
+│   └── check_parity.py        # 自检：numpy 版 == torchaudio 版
+├── checkpoints/kws/           # 自动生成，用于存放 .pt 缓存、.pth 权重、.onnx
+└── projects/kws/              # 训练相关代码
+```
+
+## 全流程
+
+```bash
+# 0) 特征口径自检（numpy 设备实现 vs torchaudio 训练实现，偏差应 < 1e-2 dB）
+python -m common.audio.check_parity ~/clips/唤醒词1.wav --random 2
+
+# 1) 重建三份特征缓存（数据目录用参数或环境变量，别再写死在代码里）
+python projects/kws/cache_features.py \
+    --json-dir  <标注目录，含 p_train.json / n_train.json ...> \
+    --audio-dir <wav 目录>
+#   或：export MOBVOI_JSON_DIR=... MOBVOI_AUDIO_DIR=...
+
+# 2) 训练（读缓存；缓存比特征代码旧会直接报错退出）
+python projects/kws/train_wakeword.py
+
+# 3) 导出 ONNX（eval 模式，输入 1x1x64x101）
+python checkpoints/kws/export_onnx.py
+
+# 4) 拷到 Jetson，编 TensorRT engine 后跑 host_kws_test.py 回归
+#    trtexec --onnx=wakeword.onnx --saveEngine=wakeword.engine --fp16
+```
+
+## 评估要求
+- **两套都要看**：① Mobvoi test set（确认没忘本，脚本已打印 0.5/0.6/0.7/0.9 各阈值召回率与 FAR）；
+  ② 本机 ReSpeaker 实录（房间环境、20cm/1m/3~5m 各距离），这才是验收，按距离/电平分桶统计召回。
+- 阈值 `THRESHOLD` / `CONSECUTIVE_HITS` 必须在本机实录音上重新定，别沿用旧模型调出来的值。
+
+## 已知坑
+- 特征口径（mel 刻度、归一方式）与训练不一致时，模型对真实人声会给恒 0 概率 —— 先跑 `check_parity`。
+- `best_wakeword.pth` 若不跟着特征改动重训，设备端"新特征 + 旧权重"会完全失效（值域整体平移几十 dB）。
+- 导出 ONNX 时模型必须是 `eval()` 模式（`export_onnx.py` 已断言）。
