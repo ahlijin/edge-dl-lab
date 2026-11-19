@@ -44,5 +44,6 @@ ENV/
 *.pt
 *.tar.gz
 *.wav
+data/
 
 
