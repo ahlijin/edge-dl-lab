@@ -1,9 +1,16 @@
 import torch
 import os
+import sys
 import time
 from torch.utils.data import DataLoader
 
 torch.set_num_threads(10) 
+
+# 本文件在 scripts/ 下，模块在 ../src：运行时把它加进 import 搜索路径。
+# Pylance 不会执行这段代码，静态解析由仓库根目录的 pyrightconfig.json
+# 里的 extraPaths（projects/detection/src）负责，两者需要保持一致。
+current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # projects/detection
+sys.path.insert(0, os.path.join(current_dir, "src"))
 
 from anchor_utils import generate_anchors
 from dataset import HomeObjectsDataset
@@ -29,7 +36,6 @@ def train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 1. 数据加载
-    current_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(current_dir, "data", "homeobjects-3K")
 
     batch_size = 4
@@ -49,8 +55,9 @@ def train():
 
     # 3. 锚框只需要生成一次（因为参数固定了）
     # anchors = generate_anchors((40, 40), scales=[32, 64], ratios=[0.5, 1.0, 2.0], stride=8).to(device)
-    anchors = generate_anchors((40, 40), scales=[32, 64, 128, 256], ratios=[0.5, 1.0, 2.0], stride=8)
-    assiger = AnchorAssigner(pos_iou_thresh=0.5, neg_iou_thresh=0.3)
+    # anchors 必须和 gt_boxes 在同一设备上，否则 GPU 训练时 IoU 计算会报设备不一致
+    anchors = generate_anchors((40, 40), scales=[32, 64, 128, 256], ratios=[0.5, 1.0, 2.0], stride=8).to(device)
+    assigner = AnchorAssigner(pos_iou_thresh=0.5, neg_iou_thresh=0.3)
 
     epochs = 25
 
@@ -69,7 +76,7 @@ def train():
             for i in range(len(images)):
                 gt_b = gt_boxes_list[i].to(device)
                 gt_c = gt_classes_list[i].to(device)
-                obj, box_t, cls_t = assiger(anchors, gt_b, gt_c)
+                obj, box_t, cls_t = assigner(anchors, gt_b, gt_c)
                 batch_objectness.append(obj)
                 batch_box_targets.append(box_t)
                 batch_class_targets.append(cls_t)
@@ -107,8 +114,10 @@ def train():
         avg_loss = epoch_loss / len(train_loader)
         print(f"=== Epoch [{epoch+1}/{epochs}] 结束 | 平均 Loss: {avg_loss:.4f} | 耗时: {time.time()-start_time:.1f}s ===\n")
 
-        # 8. 保存模型权重
-    torch.save(model.state_dict(), os.path.join(current_dir, "detector_weights.pth"))
+    # 8. 保存模型权重（weights 目录不存在时自动创建）
+    weights_dir = os.path.join(current_dir, "weights")
+    os.makedirs(weights_dir, exist_ok=True)
+    torch.save(model.state_dict(), os.path.join(weights_dir, "detector_weights.pth"))
     print("训练完成，模型已保存！")
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ import os
 import sys
 
 # 将项目根目录加入 sys.path，解决 import 报错
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 sys.path.insert(0, ROOT_DIR)
 
 import torch
@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 import numpy as np
 
-from projects.kws.model import DSCNN
+from projects.kws.src.model import DSCNN
 
 # 特征口径的来源文件：它们任一比缓存新，就说明缓存是旧口径的，训练前必须重跑缓存
 FEATURE_SOURCES = [
@@ -33,7 +33,7 @@ def check_cache_freshness(ckpt_dir, allow_stale=False):
     for name in CACHE_NAMES:
         path = os.path.join(ckpt_dir, name)
         if not os.path.exists(path):
-            raise SystemExit(f"缺少缓存 {path}\n先跑: python projects/kws/cache_features.py --json-dir ... --audio-dir ...")
+            raise SystemExit(f"缺少缓存 {path}\n先跑: python projects/kws/scripts/cache_features.py --json-dir ... --audio-dir ...")
         if os.path.getmtime(path) < newest_src and not allow_stale:
             raise SystemExit(
                 f"{name} 比 {newest_name} 旧 —— 特征口径改过，但缓存还是旧口径的。\n"

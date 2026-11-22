@@ -25,7 +25,7 @@ CKPT_DIR = os.path.join(ROOT_DIR, "checkpoints", "kws")
 
 import torch
 
-from projects.kws.model import DSCNN
+from projects.kws.src.model import DSCNN
 
 
 def main():
@@ -38,7 +38,7 @@ def main():
     args = ap.parse_args()
 
     if not os.path.exists(args.pth):
-        raise SystemExit(f"找不到权重 {args.pth}，先跑 projects/kws/train_wakeword.py")
+        raise SystemExit(f"找不到权重 {args.pth}，先跑 projects/kws/scripts/train_wakeword.py")
 
     model = DSCNN(n_classes=2)
     model.load_state_dict(torch.load(args.pth, map_location="cpu"))

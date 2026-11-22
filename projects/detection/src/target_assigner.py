@@ -18,7 +18,6 @@ class AnchorAssigner:
 
         ious = compute_iou(anchors, gt_boxes)                       # (N, M)
         max_iou_per_anchor, gt_idx_per_anchor = ious.max(dim=1)      # 每个 anchor 的最佳 GT
-        _, anchor_idx_per_gt = ious.max(dim=0)                       # 每个 GT 的最佳 anchor
 
         # 1) 忽略区（先做，后面正样本会覆盖它）
         objectness[(max_iou_per_anchor >= self.neg_iou_thresh) &
@@ -32,11 +31,26 @@ class AnchorAssigner:
                                             gt_boxes[gt_idx_per_anchor[pos_mask]])
 
         # 3) 兜底：每个 GT 至少一个正样本（最后做，保证不被覆盖）
+        #    修复：原来是无条件把"该 GT 最像的 anchor"改成正样本，如果这个 anchor
+        #    已经属于别的 GT（两个 GT 抢同一个 anchor），后面的写入会把前面的覆盖掉，
+        #    被抢的那个 GT 就一个正样本都没有了。现在只给"还没有正样本"的 GT 兜底，
+        #    并且只在还没被占用的 anchor 里挑 IoU 最高的。
+        pos_count_per_gt = torch.zeros(gt_boxes.shape[0], dtype=torch.int64)
+        for g_idx in gt_idx_per_anchor[pos_mask]:
+            pos_count_per_gt[g_idx] += 1
+
         for i in range(gt_boxes.shape[0]):
-            a_idx = anchor_idx_per_gt[i]
+            if pos_count_per_gt[i] > 0:
+                continue
+
+            iou_this_gt = ious[:, i].clone()
+            iou_this_gt[objectness == 1.0] = -1.0       # 已被占用的 anchor 排除掉
+            a_idx = int(iou_this_gt.argmax())
+
             objectness[a_idx] = 1.0
             class_targets[a_idx] = gt_classes[i]
             box_targets[a_idx] = self.encode(anchors[a_idx:a_idx + 1], gt_boxes[i:i + 1])
+            pos_count_per_gt[i] = 1
 
         return objectness, box_targets, class_targets
 

@@ -1,0 +1,16 @@
+{
+  "include": [
+    "common",
+    "projects"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/data",
+    "**/outputs",
+    "**/weights",
+    ".venv"
+  ],
+  "extraPaths": [
+    "projects/detection/src"
+  ]
+}

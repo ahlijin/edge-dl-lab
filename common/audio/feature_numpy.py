@@ -11,7 +11,7 @@
 设备端（Jetson 的 host_kws_test.py）直接 import 这里的 logmel_feat，
 训练侧 common/audio/feature_extractor.py 也读这里的常量 —— 参数只改这一份。
 
-注意：任何参数变动都必须重跑 projects/kws/cache_features.py，
+注意：任何参数变动都必须重跑 projects/kws/scripts/cache_features.py，
 否则训练用的还是旧口径的缓存（checkpoints/kws/*_cache.pt）。
 """
 

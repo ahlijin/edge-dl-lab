@@ -1,17 +1,22 @@
 import torch
 import os
+import sys
+import random
+
+# 本文件在 scripts/ 下，模块在 ../src：把它加进 import 搜索路径
+current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # projects/detection
+sys.path.insert(0, os.path.join(current_dir, "src"))
+
 from anchor_utils import generate_anchors
 from dataset import HomeObjectsDataset
 from target_assigner import AnchorAssigner
 from model import TinyDetector
 from loss import DetectionLoss
-import random
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 1. 加载一条数据
-    current_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(current_dir, "data", "homeobjects-3K")
     dataset = HomeObjectsDataset(data_dir, split="val", input_size=(320, 320))
     img, gt_boxes, gt_classes = dataset[random.randint(0, 403)]

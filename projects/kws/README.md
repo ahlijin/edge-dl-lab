@@ -40,6 +40,8 @@ edge-dl-lab/
 │   └── check_parity.py        # 自检：numpy 版 == torchaudio 版
 ├── checkpoints/kws/           # 自动生成，用于存放 .pt 缓存、.pth 权重、.onnx
 └── projects/kws/              # 训练相关代码
+    ├── src/                   # 被 import 的模块：model.py（DSCNN）
+    ├── scripts/               # 可执行入口：cache_features.py / train_wakeword.py
     └── deploy/                # 设备端工具：trt_engine.py（引擎封装）+ host_kws_test.py（唤醒回归）
 ```
 
@@ -50,13 +52,13 @@ edge-dl-lab/
 python -m common.audio.check_parity ~/clips/唤醒词1.wav --random 2
 
 # 1) 重建三份特征缓存（数据目录用参数或环境变量，别再写死在代码里）
-python projects/kws/cache_features.py \
+python projects/kws/scripts/cache_features.py \
     --json-dir  <标注目录，含 p_train.json / n_train.json ...> \
     --audio-dir <wav 目录>
 #   或：export MOBVOI_JSON_DIR=... MOBVOI_AUDIO_DIR=...
 
 # 2) 训练（读缓存；缓存比特征代码旧会直接报错退出）
-python projects/kws/train_wakeword.py
+python projects/kws/scripts/train_wakeword.py
 
 # 3) 导出 ONNX（eval 模式，输入 1x1x64x101）
 python checkpoints/kws/export_onnx.py

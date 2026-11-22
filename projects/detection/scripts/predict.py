@@ -1,8 +1,13 @@
 import torch
 import os
+import sys
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import random
+
+# 本文件在 scripts/ 下，模块在 ../src：把它加进 import 搜索路径
+current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # projects/detection
+sys.path.insert(0, os.path.join(current_dir, "src"))
 
 from dataset import HomeObjectsDataset
 from model import TinyDetector
@@ -80,12 +85,11 @@ def decode_predictions(reg_pred, obj_pred, cls_pred, anchors):
 
 if __name__ == "__main__":
     device = torch.device("cpu")
-    current_dir = os.path.dirname(os.path.abspath(__file__))
     
     # 1. 加载模型
     # model = TinyDetector(num_classes=12, num_anchors=6).to(device)
     model = TinyDetector(num_classes=12, num_anchors=12).to(device)
-    weights_path = os.path.join(current_dir, "detector_weights.pth")
+    weights_path = os.path.join(current_dir, "weights", "detector_weights.pth")
     model.load_state_dict(torch.load(weights_path, map_location=device))
     model.eval() # 开启推理模式
     print("模型加载成功！")
@@ -114,7 +118,7 @@ if __name__ == "__main__":
         
         # 4. 过滤低分框 (阈值设为 0.3，可根据实际效果调整)
         print(f"过滤前的最高得分: {final_scores.max().item():.4f}")
-        score_thresh = 0.2
+        score_thresh = 0.3
         keep_mask = final_scores > score_thresh
         pred_boxes = pred_boxes[keep_mask]
         final_scores = final_scores[keep_mask]
