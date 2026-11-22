@@ -64,13 +64,18 @@ python projects/kws/scripts/train_wakeword.py
 # 3) 导出 ONNX（eval 模式，输入 1x1x64x101，输出到 projects/kws/weights/wakeword.onnx）
 python projects/kws/scripts/export_onnx.py
 
-# 4) 拷到 Jetson，编 TensorRT engine 后跑 host_kws_test.py 回归
+# 4) 拷到 Jetson，编 TensorRT engine 后跑 host_kws_test.py 回归（已在本机 Jetson 上验证通过）
 #    trtexec --onnx=wakeword.onnx --saveEngine=wakeword.engine --fp16
 
 # 5) 设备端唤醒回归工具 host_kws_test.py（只打唤醒概率，不做命令识别）
 #    部署：scp common/audio/feature_numpy.py projects/kws/deploy/{trt_engine,host_kws_test}.py nvidia@<jetson>:~/hijetson/
 #    运行：.venv/bin/python host_kws_test.py
 ```
+
+## 部署状态
+- **已通过**：`best_wakeword.pth` → `wakeword.onnx` → Jetson 上 `trtexec` 编 TensorRT engine（fp16）→ `host_kws_test.py` 实机回归，唤醒概率输出正常。
+- 量化前后用的是同一个 `wakeword.onnx`（opset 18），engine 与 onnx 的输入形状都固定 `1x1x64x101`。
+- **未做**：尚未接入 ROS 2 / Zenoh 节点，目前只在设备上以独立脚本跑唤醒回归。
 
 ## 评估要求
 - **两套都要看**：① Mobvoi test set（确认没忘本，脚本已打印 0.5/0.6/0.7/0.9 各阈值召回率与 FAR）；
