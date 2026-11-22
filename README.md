@@ -10,9 +10,8 @@
 - [ ] 04 Anomaly：时序异常检测
 
 ## 目录说明
-- `common/`：跨项目复用的基础模块（目前只有 `audio/`：Mel 特征口径、numpy 实现、一致性自检）
-- `projects/NN_xxx/`：每个练手项目的独立代码目录，内部统一分层：
-  - `src/`：被 import 的模块（模型、数据集、损失、锚框等）
+- `projects/NN_xxx/`：每个练手项目的独立代码目录（项目内自包含，不跨项目共用代码），内部统一分层：
+  - `src/`：被 import 的模块（模型、数据集、损失、锚框、kws 的 `audio/` 特征口径等）
   - `scripts/`：可执行入口（数据准备 / 训练 / 分步验证 / 推理）
   - `deploy/`：设备端工具（kws 有 TensorRT 引擎封装与唤醒回归脚本）
   - `weights/`：入库的模型产物（`detector_weights.pth`、`best_wakeword.pth`、`wakeword.onnx`）
@@ -20,7 +19,7 @@
 - `notebooks/`、`docs/`：探索性实验与流程记录（按需创建）
 
 ## 快速开始
-- 01 KWS：`python projects/kws/scripts/cache_features.py` → `python projects/kws/scripts/train_wakeword.py`，细节见 `projects/kws/README.md`
+- 01 KWS：`python projects/kws/scripts/check_parity.py --random 2`（口径自检）→ `cache_features.py` → `train_wakeword.py`，细节见 `projects/kws/README.md`
 - 02 Detection：`python projects/detection/scripts/verify_step1.py` 起四步依次验证到 `predict.py`，细节见 `projects/detection/README.md`
 
 ## 版本与数据管理规范

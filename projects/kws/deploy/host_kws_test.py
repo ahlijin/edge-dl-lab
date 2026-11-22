@@ -1,11 +1,11 @@
 """Jetson 端 KWS 实时测试：ReSpeaker 采集 -> 特征 -> TensorRT 推理 -> 打概率。
 
-特征口径不在这里实现，直接 import 仓库里的 common/audio/feature_numpy.py（部署时放在同目录）。
+特征口径不在这里实现，直接 import 仓库里的 projects/kws/src/audio/feature_numpy.py（部署时放在同目录）。
 训练侧（torchaudio）读的是同一份参数，所以这里不需要再对一遍。
 
 部署（两行，都在仓库根执行）：
-    scp common/audio/feature_numpy.py  nvidia@<jetson>:~/hijetson/
-    scp projects/kws/deploy/host_kws_test.py nvidia@<jetson>:~/hijetson/
+    scp projects/kws/src/audio/feature_numpy.py nvidia@<jetson>:~/hijetson/
+    scp projects/kws/deploy/host_kws_test.py    nvidia@<jetson>:~/hijetson/
 
 运行（在 Jetson 的 ~/hijetson 下，需要 wakeword.engine）：
     .venv/bin/python host_kws_test.py

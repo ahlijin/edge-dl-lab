@@ -16,8 +16,8 @@ from projects.kws.src.model import DSCNN
 
 # 特征口径的来源文件：它们任一比缓存新，就说明缓存是旧口径的，训练前必须重跑缓存
 FEATURE_SOURCES = [
-    os.path.join("common", "audio", "feature_numpy.py"),
-    os.path.join("common", "audio", "feature_extractor.py"),
+    os.path.join("projects", "kws", "src", "audio", "feature_numpy.py"),
+    os.path.join("projects", "kws", "src", "audio", "feature_extractor.py"),
 ]
 CACHE_NAMES = ("train_cache.pt", "val_cache.pt", "test_cache.pt")
 

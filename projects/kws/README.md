@@ -11,7 +11,7 @@
 
 ## 输入特征口径（改口径必须重跑缓存）
 
-训练、离线评估、设备推理必须是同一套口径，唯一来源是 `common/audio/feature_numpy.py`：
+训练、离线评估、设备推理必须是同一套口径，唯一来源是 `projects/kws/src/audio/feature_numpy.py`：
 
 1. `MelSpectrogram(sample_rate=16000, n_fft=400, win_length=400, hop_length=160,
    n_mels=64, power=2.0)` —— **htk** mel、**不做面积归一**(`norm=None`)、reflect 填充、periodic hann 窗
@@ -34,14 +34,14 @@
 ## 目录结构约定
 ```text
 edge-dl-lab/
-├── common/audio/
-│   ├── feature_numpy.py       # 特征口径唯一来源（设备端直接 import 这份）
-│   ├── feature_extractor.py   # torchaudio 版，参数从 feature_numpy.py 取
-│   └── check_parity.py        # 自检：numpy 版 == torchaudio 版
 ├── checkpoints/kws/           # 自动生成，只放 .pt 特征缓存（3.7GB，可重建，已 gitignore）
 └── projects/kws/              # 训练相关代码 + 入库产物
-    ├── src/                   # 被 import 的模块：model.py（DSCNN）
-    ├── scripts/               # 可执行入口：cache_features.py / train_wakeword.py / export_onnx.py
+    ├── src/
+    │   ├── model.py                   # DSCNN
+    │   └── audio/
+    │       ├── feature_numpy.py       # 特征口径唯一来源（numpy，设备端直接 import 这份）
+    │       └── feature_extractor.py   # torchaudio 版，参数从 feature_numpy.py 取
+    ├── scripts/               # 可执行入口：cache_features.py / train_wakeword.py / export_onnx.py / check_parity.py
     ├── weights/               # 入库的模型产物：best_wakeword.pth、wakeword.onnx
     └── deploy/                # 设备端工具：trt_engine.py（引擎封装）+ host_kws_test.py（唤醒回归）
 ```
@@ -50,7 +50,7 @@ edge-dl-lab/
 
 ```bash
 # 0) 特征口径自检（numpy 设备实现 vs torchaudio 训练实现，偏差应 < 1e-2 dB）
-python -m common.audio.check_parity ~/clips/唤醒词1.wav --random 2
+python projects/kws/scripts/check_parity.py ~/clips/唤醒词1.wav --random 2
 
 # 1) 重建三份特征缓存（数据目录用参数或环境变量，别再写死在代码里）
 python projects/kws/scripts/cache_features.py \
@@ -68,14 +68,14 @@ python projects/kws/scripts/export_onnx.py
 #    trtexec --onnx=wakeword.onnx --saveEngine=wakeword.engine --fp16
 
 # 5) 设备端唤醒回归工具 host_kws_test.py（只打唤醒概率，不做命令识别）
-#    部署：scp common/audio/feature_numpy.py projects/kws/deploy/{trt_engine,host_kws_test}.py nvidia@<jetson>:~/hijetson/
+#    部署：scp projects/kws/src/audio/feature_numpy.py projects/kws/deploy/{trt_engine,host_kws_test}.py nvidia@<jetson>:~/hijetson/
 #    运行：.venv/bin/python host_kws_test.py
 ```
 
 ## 部署状态
 - **已通过（实机 Jetson，精度 fp16）**：`best_wakeword.pth` → `wakeword.onnx`（opset 18）→ `trtexec --fp16` 编 TensorRT engine → `host_kws_test.py` 回归 → ROS 2 节点接入，整条链路唤醒概率输出正常。
 - engine 与 onnx 的输入形状都固定 `1x1x64x101`，量化只用 fp16（未做 INT8 校准）。
-- ROS 2 侧的节点 / launch 代码在设备端工作区，不在本仓库；本仓库提供的是特征实现（`common/audio/feature_numpy.py`）与引擎封装 + 回归脚本（`projects/kws/deploy/`）。
+- ROS 2 侧的节点 / launch 代码在设备端工作区，不在本仓库；本仓库提供的是特征实现（`projects/kws/src/audio/feature_numpy.py`）与引擎封装 + 回归脚本（`projects/kws/deploy/`）。
 
 ## 评估要求
 - **两套都要看**：① Mobvoi test set（确认没忘本，脚本已打印 0.5/0.6/0.7/0.9 各阈值召回率与 FAR）；

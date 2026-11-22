@@ -12,8 +12,8 @@ import soundfile as sf
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
 
-from common.audio.feature_extractor import AudioFeatureExtractor
-from common.audio.feature_numpy import FEATURE_FLOOR, N_MELS, TOP_DB
+from projects.kws.src.audio.feature_extractor import AudioFeatureExtractor
+from projects.kws.src.audio.feature_numpy import FEATURE_FLOOR, N_MELS, TOP_DB
 
 class MobvoiDataset(Dataset):
     def __init__(self, json_files, audio_dir, extractor, target_len=16000):

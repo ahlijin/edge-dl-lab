@@ -2,26 +2,32 @@
 
 训练前（或改过 feature_numpy.py 之后）跑一遍，确认设备端会得到和训练一样的特征：
 
-    python -m common.audio.check_parity <wav1> [<wav2> ...]
-    python -m common.audio.check_parity --random 3        # 用随机噪声自测
+    python projects/kws/scripts/check_parity.py <wav1> [<wav2> ...]
+    python projects/kws/scripts/check_parity.py --random 3        # 用随机噪声自测
 
 判定标准：功率谱相对误差 < 1e-3，最终特征最大绝对偏差 < 1e-2 dB。
 不通过就别往下跑 cache_features.py。
 """
 
-import argparse
+import os
 import sys
+
+# 将项目根目录加入 sys.path，解决 import 报错
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+sys.path.insert(0, ROOT_DIR)
+
+import argparse
 
 import numpy as np
 
-from common.audio import feature_numpy as fn
+from projects.kws.src.audio import feature_numpy as fn
 
 
 def _torch_parts(wav_np):
     import torch
     import torchaudio
 
-    from common.audio.feature_extractor import AudioFeatureExtractor
+    from projects.kws.src.audio.feature_extractor import AudioFeatureExtractor
 
     wav = torch.from_numpy(np.asarray(wav_np, dtype=np.float32))
     ext = AudioFeatureExtractor()

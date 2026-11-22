@@ -1,13 +1,13 @@
 import torch
 import torchaudio
 
-from common.audio.feature_numpy import (
+from projects.kws.src.audio.feature_numpy import (
     SAMPLE_RATE, N_FFT, WIN_LENGTH, HOP_LENGTH, N_MELS, TOP_DB,
 )
 
 
 class AudioFeatureExtractor:
-    """训练侧特征提取（torchaudio），参数与 numpy 版共用 common/audio/feature_numpy.py。
+    """训练侧特征提取（torchaudio），参数与同目录的 feature_numpy.py 共用。
 
     口径：
       MelSpectrogram(htk, norm=None, power=2, reflect pad) -> 绝对 dB
