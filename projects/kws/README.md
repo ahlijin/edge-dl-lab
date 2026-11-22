@@ -73,9 +73,9 @@ python projects/kws/scripts/export_onnx.py
 ```
 
 ## 部署状态
-- **已通过**：`best_wakeword.pth` → `wakeword.onnx` → Jetson 上 `trtexec` 编 TensorRT engine（fp16）→ `host_kws_test.py` 实机回归，唤醒概率输出正常。
-- 量化前后用的是同一个 `wakeword.onnx`（opset 18），engine 与 onnx 的输入形状都固定 `1x1x64x101`。
-- **未做**：尚未接入 ROS 2 / Zenoh 节点，目前只在设备上以独立脚本跑唤醒回归。
+- **已通过（实机 Jetson，精度 fp16）**：`best_wakeword.pth` → `wakeword.onnx`（opset 18）→ `trtexec --fp16` 编 TensorRT engine → `host_kws_test.py` 回归 → ROS 2 节点接入，整条链路唤醒概率输出正常。
+- engine 与 onnx 的输入形状都固定 `1x1x64x101`，量化只用 fp16（未做 INT8 校准）。
+- ROS 2 侧的节点 / launch 代码在设备端工作区，不在本仓库；本仓库提供的是特征实现（`common/audio/feature_numpy.py`）与引擎封装 + 回归脚本（`projects/kws/deploy/`）。
 
 ## 评估要求
 - **两套都要看**：① Mobvoi test set（确认没忘本，脚本已打印 0.5/0.6/0.7/0.9 各阈值召回率与 FAR）；
