@@ -38,10 +38,11 @@ edge-dl-lab/
 │   ├── feature_numpy.py       # 特征口径唯一来源（设备端直接 import 这份）
 │   ├── feature_extractor.py   # torchaudio 版，参数从 feature_numpy.py 取
 │   └── check_parity.py        # 自检：numpy 版 == torchaudio 版
-├── checkpoints/kws/           # 自动生成，用于存放 .pt 缓存、.pth 权重、.onnx
-└── projects/kws/              # 训练相关代码
+├── checkpoints/kws/           # 自动生成，只放 .pt 特征缓存（3.7GB，可重建，已 gitignore）
+└── projects/kws/              # 训练相关代码 + 入库产物
     ├── src/                   # 被 import 的模块：model.py（DSCNN）
-    ├── scripts/               # 可执行入口：cache_features.py / train_wakeword.py
+    ├── scripts/               # 可执行入口：cache_features.py / train_wakeword.py / export_onnx.py
+    ├── weights/               # 入库的模型产物：best_wakeword.pth、wakeword.onnx
     └── deploy/                # 设备端工具：trt_engine.py（引擎封装）+ host_kws_test.py（唤醒回归）
 ```
 
@@ -60,8 +61,8 @@ python projects/kws/scripts/cache_features.py \
 # 2) 训练（读缓存；缓存比特征代码旧会直接报错退出）
 python projects/kws/scripts/train_wakeword.py
 
-# 3) 导出 ONNX（eval 模式，输入 1x1x64x101）
-python checkpoints/kws/export_onnx.py
+# 3) 导出 ONNX（eval 模式，输入 1x1x64x101，输出到 projects/kws/weights/wakeword.onnx）
+python projects/kws/scripts/export_onnx.py
 
 # 4) 拷到 Jetson，编 TensorRT engine 后跑 host_kws_test.py 回归
 #    trtexec --onnx=wakeword.onnx --saveEngine=wakeword.engine --fp16

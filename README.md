@@ -15,8 +15,8 @@
   - `src/`：被 import 的模块（模型、数据集、损失、锚框等）
   - `scripts/`：可执行入口（数据准备 / 训练 / 分步验证 / 推理）
   - `deploy/`：设备端工具（kws 有 TensorRT 引擎封装与唤醒回归脚本）
-  - `weights/`：入库的轻量权重（detection 的 `detector_weights.pth`）
-- `checkpoints/NN_xxx/`：存放训练生成的权重（`.pth`）、ONNX（`.onnx`）与特征缓存（`.pt`）
+  - `weights/`：入库的模型产物（`detector_weights.pth`、`best_wakeword.pth`、`wakeword.onnx`）
+- `checkpoints/NN_xxx/`：机器本地的训练中间产物（目前只有 kws 的 `.pt` 特征缓存，已 gitignore、可重建）
 - `notebooks/`、`docs/`：探索性实验与流程记录（按需创建）
 
 ## 快速开始
@@ -25,5 +25,5 @@
 
 ## 版本与数据管理规范
 - **代码入库**：各项目的 Python 脚本均放在 `projects/NN_xxx/` 下（可复用模块进 `src/`，入口脚本进 `scripts/`）。
-- **模型入库**：小于 10MB 的轻量级模型权重（如 `checkpoints/kws/best_wakeword.pth`、`projects/detection/weights/detector_weights.pth`）直接提交至 Git；大于 10MB 的权重请使用 Git LFS 或 Gitea Release。
+- **模型入库**：小于 10MB 的轻量级模型产物（如 `projects/kws/weights/best_wakeword.pth`、`projects/detection/weights/detector_weights.pth`）直接提交至 Git；大于 10MB 的权重请使用 Git LFS 或 Gitea Release。
 - **数据隔离**：原始数据集（音频/图像）与预处理缓存文件（`*.pt`）严禁提交，已在 `.gitignore` 中过滤，由各自项目的脚本自动生成。

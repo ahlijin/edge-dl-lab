@@ -48,6 +48,7 @@ def main(allow_stale=False):
     torch.set_num_threads(20) 
 
     CKPT_DIR = os.path.join(ROOT_DIR, "checkpoints", "kws")
+    WEIGHTS_DIR = os.path.join(ROOT_DIR, "projects", "kws", "weights")
 
     print("加载特征缓存中...")
     check_cache_freshness(CKPT_DIR, allow_stale=allow_stale)
@@ -156,15 +157,16 @@ def main(allow_stale=False):
         
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            # 2. 保存模型到 checkpoints/kws/
-            torch.save(model.state_dict(), os.path.join(CKPT_DIR, "best_wakeword.pth"))
-            print(f"  --> 发现更好的模型，已保存至 {CKPT_DIR}/best_wakeword.pth")
+            # 2. 保存模型到 projects/kws/weights/（目录不存在时自动创建）
+            os.makedirs(WEIGHTS_DIR, exist_ok=True)
+            torch.save(model.state_dict(), os.path.join(WEIGHTS_DIR, "best_wakeword.pth"))
+            print(f"  --> 发现更好的模型，已保存至 {WEIGHTS_DIR}/best_wakeword.pth")
 
     # ==========================================
     # 5. 最终测试与阈值评估
     # ==========================================
     print("\n开始在测试集上评估...")
-    model.load_state_dict(torch.load(os.path.join(CKPT_DIR, "best_wakeword.pth"), map_location=device))
+    model.load_state_dict(torch.load(os.path.join(WEIGHTS_DIR, "best_wakeword.pth"), map_location=device))
     model.eval()
 
     all_probs = []

@@ -2,8 +2,8 @@
 
 路径全部基于仓库根，从哪个目录跑都行：
 
-    python checkpoints/kws/export_onnx.py
-    python checkpoints/kws/export_onnx.py --pth checkpoints/kws/best_wakeword.pth --out checkpoints/kws/wakeword.onnx
+    python projects/kws/scripts/export_onnx.py
+    python projects/kws/scripts/export_onnx.py --pth projects/kws/weights/best_wakeword.pth --out projects/kws/weights/wakeword.onnx
 
 注意：导出前模型必须处于 eval 模式（下面 model.eval() 之后有断言），
 否则 BatchNorm 会用单个样本的统计量，模型导出后基本“不看内容”。
@@ -19,9 +19,9 @@ import argparse
 import os
 import sys
 
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 sys.path.insert(0, ROOT_DIR)
-CKPT_DIR = os.path.join(ROOT_DIR, "checkpoints", "kws")
+WEIGHTS_DIR = os.path.join(ROOT_DIR, "projects", "kws", "weights")
 
 import torch
 
@@ -30,8 +30,8 @@ from projects.kws.src.model import DSCNN
 
 def main():
     ap = argparse.ArgumentParser(description="导出 KWS 唤醒词模型为 ONNX")
-    ap.add_argument("--pth", default=os.path.join(CKPT_DIR, "best_wakeword.pth"))
-    ap.add_argument("--out", default=os.path.join(CKPT_DIR, "wakeword.onnx"))
+    ap.add_argument("--pth", default=os.path.join(WEIGHTS_DIR, "best_wakeword.pth"))
+    ap.add_argument("--out", default=os.path.join(WEIGHTS_DIR, "wakeword.onnx"))
     ap.add_argument("--opset", type=int, default=18,
                     help="ONNX opset，默认 18：新版 torch 的 dynamo 导出器对 12 会报错，"
                          "且 Jetson 上 TensorRT 10.16 已验证能直接编 opset 18")
